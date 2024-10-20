@@ -2,110 +2,75 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type model struct {
-	choices  []string         // items on the to-do list
-	cursor   int              // which to-do list item our cursor is pointing at
-	selected map[int]struct{} // which to-do items are selected
+	status int
+	err    error
 }
 
-func initialModel() model {
-	return model{
-		// Our to-do list is a grocery list
-		choices:  []string{"Buy carrots", "Buy celery", "Buy kohlrabi"},
+type (
+	statusMsg int
+	errMsg    struct{ err error }
+)
 
-		// A map which indicates which choices are selected. We're using
-		// the map like a mathematical set. The keys refer to the indexes
-		// of the `choices` slice, above.
-		selected: make(map[int]struct{}),
+func (e errMsg) Error() string { return e.err.Error() }
+
+const url = "https://charm.sh/"
+
+func checkServer() tea.Msg {
+	c := &http.Client{Timeout: time.Second * 10}
+	res, err := c.Get(url)
+	if err != nil {
+		return errMsg{err}
 	}
+	return statusMsg(res.StatusCode)
 }
 
 func (m model) Init() tea.Cmd {
-    // Just return `nil`, which means "no I/O right now, please."
-    return nil
+	return checkServer
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-    switch msg := msg.(type) {
-
-    // Is it a key press?
-    case tea.KeyMsg:
-
-        // Cool, what was the actual key pressed?
-        switch msg.String() {
-
-        // These keys should exit the program.
-        case "ctrl+c", "q":
-            return m, tea.Quit
-
-        // The "up" and "k" keys move the cursor up
-        case "up", "k":
-            if m.cursor > 0 {
-                m.cursor--
-            }
-
-        // The "down" and "j" keys move the cursor down
-        case "down", "j":
-            if m.cursor < len(m.choices)-1 {
-                m.cursor++
-            }
-
-        // The "enter" key and the spacebar (a literal space) toggle
-        // the selected state for the item that the cursor is pointing at.
-        case "enter", " ":
-            _, ok := m.selected[m.cursor]
-            if ok {
-                delete(m.selected, m.cursor)
-            } else {
-                m.selected[m.cursor] = struct{}{}
-            }
-        }
-    }
-
-    // Return the updated model to the Bubble Tea runtime for processing.
-    // Note that we're not returning a command.
-    return m, nil
+	switch msg := msg.(type) {
+	case statusMsg:
+		m.status = int(msg)
+		return m, tea.Quit
+	case errMsg:
+		m.err = msg
+	case tea.KeyMsg:
+		if msg.Type == tea.KeyCtrlC {
+			return m, tea.Quit
+		}
+	}
+	return m, nil
 }
 
 func (m model) View() string {
-    // The header
-    s := "What should we buy at the market?\n\n"
+	if m.err != nil {
+		return fmt.Sprintf("\nWe had trouble: %s\n\n", m.err)
+	}
+	// Tell the user we're doing something.
+	s := fmt.Sprintf("Checking %s ... ", url)
 
-    // Iterate over our choices
-    for i, choice := range m.choices {
+	// When the server responds with a status, add it to the current line.
+	if m.status > 0 {
+		s += fmt.Sprintf("%d %s!", m.status, http.StatusText(m.status))
+	}
 
-        // Is the cursor pointing at this choice?
-        cursor := " " // no cursor
-        if m.cursor == i {
-            cursor = ">" // cursor!
-        }
-
-        // Is this choice selected?
-        checked := " " // not selected
-        if _, ok := m.selected[i]; ok {
-            checked = "x" // selected!
-        }
-
-        // Render the row
-        s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
-    }
-
-    // The footer
-    s += "\nPress q to quit.\n"
-
-    // Send the UI for rendering
-    return s
+	// Send off whatever we came up with above for rendering.
+	return "\n" + s + "\n\n"
 }
 
 func main() {
-    p := tea.NewProgram(initialModel())
-    if _, err := p.Run(); err != nil {
-        fmt.Printf("Alas, there's been an error: %v", err)
-        os.Exit(1)
-    }
+	p := tea.NewProgram(model{})
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		os.Exit(1)
+	}
 }
