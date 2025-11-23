@@ -102,8 +102,13 @@ func createFooterContent(m model) string {
 	return fmt.Sprintf("%v %s", time.Now().Format("15:04"), m.textInput.View())
 }
 
+// best way to get const slice/maps in go
+func getTableHeaders() []string {
+	return []string{"Duration", "Time Range", "Task"}
+}
+
 func createBodyContent(width int, height int) string {
-	tableHeaders := []string{"Duration", "Time Range", "Task"}
+	tableHeaders := getTableHeaders()
 
 	durationColWidth := max(lipgloss.Width("00h 00m"), lipgloss.Width(tableHeaders[0]))
 	timeRangeColWidth := max(lipgloss.Width("00:00 - 00:00"), lipgloss.Width(tableHeaders[1]))
