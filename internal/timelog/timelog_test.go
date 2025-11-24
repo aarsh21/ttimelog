@@ -24,22 +24,16 @@ func TestLoadEntries(t *testing.T) {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
 
-	// Create templates using %s where the date should go
-	templates := []string{
-		"%s 09:41 +0530: **arrived",
-		"%s 13:30 +0530: Workin on ttimelog",
-		"%s 14:15 +0530: **lunch",
-		"%s 16:30 +0530: adding test for loading entries",
-		"%s 17:30 +0530: working ttimelog on UI",
-	}
-
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
 	today := time.Now().Format("2006-01-02")
 
-	var lines []string
-
-	for _, tmpl := range templates {
-		line := fmt.Sprintf(tmpl, today)
-		lines = append(lines, line)
+	lines := []string{
+		fmt.Sprintf("%s 22:00 +0530: Yesterday task", yesterday),
+		// Yesterday's last task
+		fmt.Sprintf("%s 23:00 +0530: End of yesterday", yesterday),
+		// Today's first task (Gap should be ignored)
+		fmt.Sprintf("%s 09:00 +0530: Start of today", today),
+		fmt.Sprintf("%s 10:00 +0530: Working", today),
 	}
 
 	result := strings.Join(lines, "\n")
@@ -55,15 +49,15 @@ func TestLoadEntries(t *testing.T) {
 	entries, err := LoadEntries(tmpFilename)
 
 	assert.NoError(t, err)
-	assert.Len(t, entries, 5)
+	assert.Len(t, entries, 4)
 
-	// Check the first entry (Start of day, should be 0 duration)
-	assert.Equal(t, "**arrived", strings.TrimSpace(entries[0].Description))
+	// Assertions
+	// Entry 0 -> Duration 0 (first entry in timelog)
 	assert.Equal(t, time.Duration(0), entries[0].Duration)
-
-	// Check the second entry (Duration calculation)
-	// 09:41 -> 13:30 is 3h 49m
-	expectedDuration := (3 * time.Hour) + (49 * time.Minute)
-	assert.Equal(t, expectedDuration, entries[1].Duration)
-	assert.Contains(t, entries[1].Description, "Workin on ttimelog")
+	// Entry 1 -> Duration 1 h (Yesterday's last task)
+	assert.Equal(t, 1*time.Hour, entries[1].Duration)
+	// Entry 2 (Today 09:00) -> Duration 0 (Reset! Not 10 hours)
+	assert.Equal(t, time.Duration(0), entries[2].Duration)
+	// Entry 3 (Today 10:00) -> Duration 1h
+	assert.Equal(t, 1*time.Hour, entries[3].Duration)
 }

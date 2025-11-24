@@ -47,7 +47,7 @@ func SaveEntry(entry Entry) error {
 }
 
 // 2025-10-17 13:30 +0530: Workin on ttimelog
-func parseEntry(line string, previousEntryEndTime *time.Time) (*Entry, error) {
+func parseEntry(line string, previousEntry *Entry) (*Entry, error) {
 	// It splits in 3 strings and we merge them later
 	tokens := strings.Split(line, ":")
 	if len(tokens) < 3 {
@@ -61,20 +61,20 @@ func parseEntry(line string, previousEntryEndTime *time.Time) (*Entry, error) {
 	}
 
 	parsedDate := dateAndTimeTokens[0]
-	currentDate := time.Now().Format("2006-01-02")
-
-	if parsedDate != currentDate {
-		return nil, nil
-	}
 
 	endTime, err := time.Parse(timeLayout, dateAndTime)
 	if err != nil {
 		return nil, err
 	}
-	entryDuration, _ := time.ParseDuration("0s")
-	if previousEntryEndTime != nil {
-		entryDuration = endTime.Sub(*previousEntryEndTime)
+
+	entryDuration := time.Duration(0)
+	if previousEntry != nil {
+		prevDate := previousEntry.EndTime.Format("2006-01-02")
+		if parsedDate == prevDate {
+			entryDuration = endTime.Sub(previousEntry.EndTime)
+		}
 	}
+
 	return &Entry{
 		EndTime:     endTime,
 		Description: tokens[2],
@@ -96,14 +96,15 @@ func LoadEntries(filePath string) ([]Entry, error) {
 		if line == "" {
 			continue
 		}
-		var ( entry *Entry
+		var (
+			entry *Entry
 			err   error
 		)
 		line = strings.Trim(line, " ")
 		if len(entries) == 0 {
 			entry, err = parseEntry(line, nil)
 		} else {
-			entry, err = parseEntry(line, &entries[len(entries)-1].EndTime)
+			entry, err = parseEntry(line, &entries[len(entries)-1])
 		}
 		if err != nil {
 			return entries, err
