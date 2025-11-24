@@ -32,10 +32,16 @@ func initialModel() model {
 	txtInput.Placeholder = "What are you working on?"
 	txtInput.Focus()
 
+	filename := "/home/rashesh/.ttimelog/ttimelog.txt"
+	entries, err := timelog.LoadEntries(filename)
+	if err != nil {
+		slog.Error("Failed to load entries", "error", err)
+	}
+
 	return model{
 		textInput: txtInput,
 		err:       nil,
-		entries:   make([]timelog.Entry, 0),
+		entries:   entries,
 	}
 }
 
@@ -124,10 +130,10 @@ func getTableHeaders() []string {
 	return []string{"Duration", "Time Range", "Task"}
 }
 
-func createBodyContent(width int, height int) string {
+func createBodyContent(width int, height int, entries []timelog.Entry) string {
 	tableHeaders := getTableHeaders()
 
-	durationColWidth := max(lipgloss.Width("00h 00m"), lipgloss.Width(tableHeaders[0]))
+	durationColWidth := max(lipgloss.Width("0 h 00 min"), lipgloss.Width(tableHeaders[0]))
 	timeRangeColWidth := max(lipgloss.Width("00:00 - 00:00"), lipgloss.Width(tableHeaders[1]))
 	taskColWidth := width - durationColWidth - timeRangeColWidth - len(tableHeaders)*2 // adjust width according to default padding added by the table component
 
@@ -137,11 +143,26 @@ func createBodyContent(width int, height int) string {
 		{Title: tableHeaders[2], Width: taskColWidth},
 	}
 
-	// TODO: mock data
-	rows := []table.Row{
-		{"0h 0m", "21:13 - 21:13", "**arrived"},
-		{"1h 2m", "21:35 - 21:37", "productivity: r&d-productivity: product: collabora-online-25-04: working on online"},
-		{"2h 44m", "21:37 - 22:19", "working"},
+	rows := make([]table.Row, 0)
+
+	var lastEndTime time.Time
+	for i, entry := range entries {
+		startTime := lastEndTime
+		entryDate := entry.EndTime.Format("2006-01-02")
+		currentDate := time.Now().Format("2006-01-02")
+
+		// only show entries for today
+		if entryDate != currentDate {
+			continue
+		}
+
+		if i == 0 || lastEndTime.Format("2006-01-02") != entryDate {
+			startTime = entry.EndTime
+		}
+
+		timeRange := fmt.Sprintf("%s - %s", startTime.Format("15:04"), entry.EndTime.Format("15:04"))
+		lastEndTime = entry.EndTime
+		rows = append(rows, table.Row{timelog.FormatDuration(entry.Duration), timeRange, entry.Description})
 	}
 
 	taskTable := table.New(
@@ -176,7 +197,7 @@ func (m model) View() string {
 	totalDividerHeight := numOfDividers * lipgloss.Height(divider)
 	bodyHeigth := availableHeight - headerHeight - statsHeight - footerHeight - totalDividerHeight
 
-	bodyContent := createBodyContent(availableWidth, bodyHeigth)
+	bodyContent := createBodyContent(availableWidth, bodyHeigth, m.entries)
 
 	innerView := lipgloss.JoinVertical(lipgloss.Left,
 		headerContent,

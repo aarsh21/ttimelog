@@ -120,3 +120,13 @@ func LoadEntries(filePath string) ([]Entry, error) {
 	}
 	return entries, nil
 }
+
+// FormatDuration formats a time.Duration into "__h __m" format.
+func FormatDuration(diff time.Duration) string {
+	diff = diff.Truncate(time.Minute)
+
+	hours := diff / time.Hour
+	diff -= hours * time.Hour
+	mins := diff / time.Minute
+	return fmt.Sprintf("%d h %d min", hours, mins)
+}
