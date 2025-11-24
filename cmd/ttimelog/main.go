@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Rash419/ttimelog/internal/config"
+	"github.com/Rash419/ttimelog/internal/timelog"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,7 +20,7 @@ type model struct {
 	err       error
 	width     int
 	height    int
-	list      []string
+	entries   []timelog.Entry
 }
 
 type (
@@ -34,7 +35,7 @@ func initialModel() model {
 	return model{
 		textInput: txtInput,
 		err:       nil,
-		list:      make([]string, 0),
+		entries:   make([]timelog.Entry, 0),
 	}
 }
 
@@ -60,7 +61,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			val := m.textInput.Value()
 			if val != "" {
-				m.list = append(m.list, val)
+				var lastTaskTime time.Time
+				if len(m.entries) == 0 {
+					lastTaskTime = time.Now()
+				} else {
+					lastTaskTime = m.entries[len(m.entries)-1].EndTime
+				}
+
+				newEntry := timelog.Entry{
+					EndTime:     time.Now(),
+					Description: val,
+					Duration:    time.Since(lastTaskTime),
+				}
+				m.entries = append(m.entries, newEntry)
+
+				if err := timelog.SaveEntry(newEntry); err != nil {
+					slog.Error("Failed to add entry with description", "error", newEntry.Description)
+				}
 				m.textInput.Reset()
 			}
 		}
