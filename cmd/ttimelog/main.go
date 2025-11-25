@@ -59,7 +59,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.textInput.Width = m.width - 8
+
+		// -2 for border
+		availableWidth := msg.Width - 2
+		prefixSpace := lipgloss.Width("15:04 > ")
+		m.textInput.Width = availableWidth - prefixSpace - 2 // -2 for safety
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -171,7 +176,30 @@ func createBodyContent(width int, height int, entries []timelog.Entry) string {
 		table.WithFocused(true),
 		table.WithHeight(height),
 	)
+	s := table.DefaultStyles()
 
+	// Remove borders from Header
+	s.Header = s.Header.
+		BorderTop(false).
+		BorderRight(false).
+		BorderBottom(false).
+		BorderLeft(false)
+
+	// Remove borders from Selected row
+	s.Selected = s.Selected.
+		BorderTop(false).
+		BorderRight(false).
+		BorderBottom(false).
+		BorderLeft(false)
+
+	// Remove borders from Cells (if any)
+	s.Cell = s.Cell.
+		BorderTop(false).
+		BorderRight(false).
+		BorderBottom(false).
+		BorderLeft(false)
+
+	taskTable.SetStyles(s)
 	return taskTable.View()
 }
 
