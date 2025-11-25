@@ -17,11 +17,21 @@ import (
 
 type model struct {
 	textInput textinput.Model
+	taskTable table.Model
 	err       error
 	width     int
 	height    int
 	entries   []timelog.Entry
 }
+
+const (
+	HeaderHeight  = 1
+	StatsHeight   = 2
+	FooterHeight  = 1
+	DividerHeight = 1
+	NumDividers   = 3
+	BorderHeight  = 2 // Top + Bottom
+)
 
 type (
 	errMsg error
@@ -38,10 +48,13 @@ func initialModel() model {
 		slog.Error("Failed to load entries", "error", err)
 	}
 
+	taskTable := createBodyContent(0, 0, entries)
+
 	return model{
 		textInput: txtInput,
 		err:       nil,
 		entries:   entries,
+		taskTable: taskTable,
 	}
 }
 
@@ -54,6 +67,7 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -65,9 +79,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		prefixSpace := lipgloss.Width("15:04 > ")
 		m.textInput.Width = availableWidth - prefixSpace - 2 // -2 for safety
 
+		// Update table dimensions
+		newCols := getTableCols(msg.Width)
+		m.taskTable.SetColumns(newCols)
+		fixedHeight := HeaderHeight + StatsHeight + FooterHeight + (DividerHeight * NumDividers) + BorderHeight
+		bodyHeight := msg.Height - fixedHeight
+		m.taskTable.SetHeight(bodyHeight)
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyEnter:
 			val := m.textInput.Value()
@@ -91,6 +111,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.textInput.Reset()
 			}
+		case tea.KeyEsc:
+			if m.taskTable.Focused() {
+				m.taskTable.Blur()
+			} else {
+				m.taskTable.Focus()
+			}
 		}
 
 	case errMsg:
@@ -99,7 +125,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.textInput, cmd = m.textInput.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+
+	m.taskTable, cmd = m.taskTable.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
 }
 
 func createHeaderContent() string {
@@ -135,12 +166,13 @@ func getTableHeaders() []string {
 	return []string{"Duration", "Time Range", "Task"}
 }
 
-func createBodyContent(width int, height int, entries []timelog.Entry) string {
+func getTableCols(width int) []table.Column {
 	tableHeaders := getTableHeaders()
 
 	durationColWidth := lipgloss.Width("0 h 00 min")
 	timeRangeColWidth := lipgloss.Width("00:00 - 00:00")
-	taskColWidth := width - durationColWidth - timeRangeColWidth - len(tableHeaders)*2 // adjust width according to default padding added by the table component
+	// adjust width according to default padding added by the table component
+	taskColWidth := max(0, width-durationColWidth-timeRangeColWidth-len(tableHeaders)*2)
 
 	columns := []table.Column{
 		{Title: tableHeaders[0], Width: durationColWidth},
@@ -148,6 +180,10 @@ func createBodyContent(width int, height int, entries []timelog.Entry) string {
 		{Title: tableHeaders[2], Width: taskColWidth},
 	}
 
+	return columns
+}
+
+func getTableRows(entries []timelog.Entry) []table.Row {
 	rows := make([]table.Row, 0)
 
 	var lastEndTime time.Time
@@ -170,69 +206,59 @@ func createBodyContent(width int, height int, entries []timelog.Entry) string {
 		rows = append(rows, table.Row{timelog.FormatDuration(entry.Duration), timeRange, entry.Description})
 	}
 
+	return rows
+}
+
+func createBodyContent(width, height int, entries []timelog.Entry) table.Model {
+	cols := getTableCols(width)
+	rows := getTableRows(entries)
 	taskTable := table.New(
-		table.WithColumns(columns),
+		table.WithColumns(cols),
 		table.WithRows(rows),
 		table.WithFocused(true),
 		table.WithHeight(height),
 	)
 	s := table.DefaultStyles()
 
-	// Remove borders from Header
-	s.Header = s.Header.
-		BorderTop(false).
-		BorderRight(false).
-		BorderBottom(false).
-		BorderLeft(false)
-
-	// Remove borders from Selected row
-	s.Selected = s.Selected.
-		BorderTop(false).
-		BorderRight(false).
-		BorderBottom(false).
-		BorderLeft(false)
-
-	// Remove borders from Cells (if any)
-	s.Cell = s.Cell.
-		BorderTop(false).
-		BorderRight(false).
-		BorderBottom(false).
-		BorderLeft(false)
-
-	taskTable.SetStyles(s)
-	return taskTable.View()
+	// s := table.DefaultStyles()
+	// s.Cell = s.Cell.Padding(0)
+	// s.Header = s.Header.Padding(0)
+	// // s.Header.Padding(0)
+	// // s.Selected.Padding(0)
+	// taskTable.SetStyles(s)
+	return taskTable
 }
 
 func (m model) View() string {
 	// make sure width is not negative
 	// model.width/height - 2 (border width)
 	availableWidth := max(m.width-2, 1)
-	availableHeight := max(m.height-2, 1)
+	// availableHeight := max(m.height-2, 1)
 
 	headerContent := createHeaderContent()
 	statsContent := createStatsContent(availableWidth)
 	footerContent := createFooterContent(m)
 
-	headerHeight := lipgloss.Height(headerContent)
-	statsHeight := lipgloss.Height(statsContent)
-	footerHeight := lipgloss.Height(footerContent)
-
-	const numOfDividers = 3
+	// headerHeight := lipgloss.Height(headerContent)
+	// statsHeight := lipgloss.Height(statsContent)
+	// footerHeight := lipgloss.Height(footerContent)
+	//
+	// const numOfDividers = 3
 	divider := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("240")).
 		Render(strings.Repeat("─", availableWidth))
 
-	totalDividerHeight := numOfDividers * lipgloss.Height(divider)
-	bodyHeigth := availableHeight - headerHeight - statsHeight - footerHeight - totalDividerHeight
+	// totalDividerHeight := numOfDividers * lipgloss.Height(divider)
+	// bodyHeigth := availableHeight - headerHeight - statsHeight - footerHeight - totalDividerHeight
 
-	bodyContent := createBodyContent(availableWidth, bodyHeigth, m.entries)
+	// bodyContent := createBodyContent(availableWidth, bodyHeigth, m)
 
 	innerView := lipgloss.JoinVertical(lipgloss.Left,
 		headerContent,
 		divider,
 		statsContent,
 		divider,
-		bodyContent,
+		m.taskTable.View(),
 		divider,
 		footerContent,
 	)
