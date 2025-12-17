@@ -9,6 +9,7 @@ import (
 
 	"github.com/Rash419/ttimelog/internal/config"
 	"github.com/Rash419/ttimelog/internal/timelog"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,6 +33,12 @@ const (
 	DividerHeight = 1
 	NumDividers   = 3
 	BorderHeight  = 2 // Top + Bottom
+)
+
+// TODO: update dynamically using config
+const (
+	targetDailyHours  = 8.0
+	targetWeeklyHours = 40.0
 )
 
 type (
@@ -163,11 +170,18 @@ func createHeaderContent() string {
 
 func createStatsContent(width int, m model) string {
 	colWidth := (width - 4) / 3
+	progressBarWidth := colWidth - 14
 
 	colStyle := lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left)
 
-	dailyStat := colStyle.Render("TODAY  ████░░░ " + timelog.FormatStatDuration(m.statsCollection.Daily.Work) + "\nLeft: 6h52m → 05:13")
-	weeklyStat := colStyle.Render("WEEK  █░░░░░░ " + timelog.FormatStatDuration(m.statsCollection.Weekly.Work) + "\nSlack: 0h0m")
+	dailyPercent := m.statsCollection.Daily.Work.Hours() / targetDailyHours
+	weeklyPercent := m.statsCollection.Weekly.Work.Hours() / targetWeeklyHours
+
+	dailyBar := progress.New(progress.WithoutPercentage(), progress.WithWidth(progressBarWidth))
+	weeklyBar := progress.New(progress.WithoutPercentage(), progress.WithWidth(progressBarWidth))
+
+	dailyStat := colStyle.Render("TODAY " + dailyBar.ViewAs(dailyPercent) + " " + timelog.FormatStatDuration(m.statsCollection.Daily.Work) + "\nLeft: 6h52m → 05:13")
+	weeklyStat := colStyle.Render("WEEK " + weeklyBar.ViewAs(weeklyPercent) + " " + timelog.FormatStatDuration(m.statsCollection.Weekly.Work) + "\nSlack: 0h0m")
 	monthlyStat := colStyle.Render("MONTH " + timelog.FormatStatDuration(m.statsCollection.Monthly.Work) + "\nLast: 0h0m/22d")
 
 	divider := lipgloss.NewStyle().
