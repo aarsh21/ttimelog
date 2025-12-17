@@ -24,6 +24,7 @@ type model struct {
 	height          int
 	entries         []timelog.Entry
 	statsCollection timelog.StatsCollection
+	scrollToBottom  bool
 }
 
 const (
@@ -65,6 +66,7 @@ func initialModel() model {
 		entries:         entries,
 		taskTable:       taskTable,
 		statsCollection: statsCollections,
+		scrollToBottom:  true,
 	}
 }
 
@@ -123,6 +125,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				rows := getTableRows(m.entries)
 				m.taskTable.SetRows(rows)
+				m.scrollToBottom = true
 
 				// update statsCollection
 				today, week, month := timelog.GetEntryState(newEntry.EndTime)
@@ -157,6 +160,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.taskTable, cmd = m.taskTable.Update(msg)
 	cmds = append(cmds, cmd)
+
+	// Scroll to bottom after table has processed the message
+	if m.scrollToBottom {
+		rowCount := len(m.taskTable.Rows())
+		if rowCount > 0 {
+			m.taskTable.SetCursor(rowCount - 1)
+		}
+		m.scrollToBottom = false
+	}
 
 	return m, tea.Batch(cmds...)
 }
