@@ -94,11 +94,7 @@ func (m *model) handleInput() {
 	}
 
 	// update table
-	newEntry := timelog.Entry{
-		EndTime:     time.Now(),
-		Description: val,
-		Duration:    time.Since(lastTaskTime),
-	}
+	newEntry := timelog.NewEntry(time.Now(), val, time.Since(lastTaskTime))
 
 	m.entries = append(m.entries, newEntry)
 	if err := timelog.SaveEntry(newEntry); err != nil {

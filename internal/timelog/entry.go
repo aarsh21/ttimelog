@@ -33,8 +33,19 @@ type Stats struct {
 
 const timeLayout = "2006-01-02 15:04 -0700"
 
-// TODO: Add test for SaveEntry
+func NewEntry(endTime time.Time, description string, duration time.Duration) Entry {
+	today, currentWeek, currentMonth := GetEntryState(endTime)
+	return Entry{
+		EndTime:      endTime,
+		Description:  description,
+		Duration:     duration,
+		Today:        today,
+		CurrentWeek:  currentWeek,
+		CurrentMonth: currentMonth,
+	}
+}
 
+// TODO: Add test for SaveEntry
 // SaveEntry saves the entry in 'YYYY-MM-DD HH:MM +/-0000: Task Description' format
 func SaveEntry(entry Entry) error {
 	// TODO: make it dynamic
