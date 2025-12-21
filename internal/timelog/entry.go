@@ -130,7 +130,7 @@ func parseEntry(line string, previousEntry *Entry) (*Entry, error) {
 	}, nil
 }
 
-func LoadEntries(filePath string) ([]Entry, StatsCollection, error) {
+func LoadEntries(filePath string) ([]Entry, StatsCollection, bool, error) {
 	statsCollection := StatsCollection{
 		Daily:   Stats{},
 		Weekly:  Stats{},
@@ -139,13 +139,13 @@ func LoadEntries(filePath string) ([]Entry, StatsCollection, error) {
 
 	entries := make([]Entry, 0)
 	file, err := os.Open(filePath)
+	handledArrivedMessage := false
 	if err != nil {
-		return entries, statsCollection, err
+		return entries, statsCollection, handledArrivedMessage, err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
@@ -161,8 +161,13 @@ func LoadEntries(filePath string) ([]Entry, StatsCollection, error) {
 		} else {
 			entry, err = parseEntry(line, &entries[len(entries)-1])
 		}
+
 		if err != nil {
-			return entries, statsCollection, err
+			return entries, statsCollection, handledArrivedMessage, err
+		}
+
+		if entry.Today && (entry.Description == "**arrived" || entry.Description == "arrived**") {
+			handledArrivedMessage = true
 		}
 
 		UpdateStatsCollection(entry, &statsCollection)
@@ -170,9 +175,9 @@ func LoadEntries(filePath string) ([]Entry, StatsCollection, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return entries, statsCollection, err
+		return entries, statsCollection, handledArrivedMessage, err
 	}
-	return entries, statsCollection, nil
+	return entries, statsCollection, handledArrivedMessage, nil
 }
 
 func UpdateStatsCollection(entry *Entry, statsCollection *StatsCollection) {

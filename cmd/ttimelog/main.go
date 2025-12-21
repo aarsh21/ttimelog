@@ -53,7 +53,7 @@ func initialModel() model {
 	txtInput.Focus()
 
 	filename := "/home/rashesh/.ttimelog/ttimelog.txt"
-	entries, statsCollections, err := timelog.LoadEntries(filename)
+	entries, statsCollections, handledArrivedMessage, err := timelog.LoadEntries(filename)
 	if err != nil {
 		slog.Error("Failed to load entries", "error", err)
 	}
@@ -62,12 +62,13 @@ func initialModel() model {
 	taskTable := createBodyContent(0, 0, entries)
 
 	return model{
-		textInput:       txtInput,
-		err:             nil,
-		entries:         entries,
-		taskTable:       taskTable,
-		statsCollection: statsCollections,
-		scrollToBottom:  true,
+		textInput:             txtInput,
+		err:                   nil,
+		entries:               entries,
+		taskTable:             taskTable,
+		statsCollection:       statsCollections,
+		scrollToBottom:        true,
+		handledArrivedMessage: handledArrivedMessage,
 	}
 }
 
@@ -84,9 +85,11 @@ func (m *model) handleInput() {
 		return
 	}
 
+	arrivedMessage := val == "**arrived" || val == "arrived**"
 	var lastTaskTime time.Time
-	if len(m.entries) == 0 {
+	if len(m.entries) == 0 || (arrivedMessage && !m.handledArrivedMessage) {
 		lastTaskTime = time.Now()
+		m.handledArrivedMessage = true
 	} else {
 		lastTaskTime = m.entries[len(m.entries)-1].EndTime
 	}
