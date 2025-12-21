@@ -127,21 +127,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.taskTable.SetRows(rows)
 				m.scrollToBottom = true
 
-				// update statsCollection
-				if !strings.Contains(newEntry.Description, "**") {
-					today, week, month := timelog.GetEntryState(newEntry.EndTime)
-					if today {
-						m.statsCollection.Daily.Work += newEntry.Duration
-					}
-					if week {
-						m.statsCollection.Weekly.Work += newEntry.Duration
-					}
-					if month {
-						m.statsCollection.Monthly.Work += newEntry.Duration
-					}
-				}
+				timelog.UpdateStatsCollection(&newEntry, &m.statsCollection)
 
-				// reset textInput
 				m.textInput.Reset()
 			}
 		case tea.KeyEsc:

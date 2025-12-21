@@ -165,17 +165,7 @@ func LoadEntries(filePath string) ([]Entry, StatsCollection, error) {
 			return entries, statsCollection, err
 		}
 
-		if !strings.Contains(entry.Description, "**") {
-			if entry.Today {
-				statsCollection.Daily.Work += entry.Duration
-			}
-			if entry.CurrentWeek {
-				statsCollection.Weekly.Work += entry.Duration
-			}
-			if entry.CurrentMonth {
-				statsCollection.Monthly.Work += entry.Duration
-			}
-		}
+		UpdateStatsCollection(entry, &statsCollection)
 		entries = append(entries, *entry)
 	}
 
@@ -183,6 +173,21 @@ func LoadEntries(filePath string) ([]Entry, StatsCollection, error) {
 		return entries, statsCollection, err
 	}
 	return entries, statsCollection, nil
+}
+
+func UpdateStatsCollection(entry *Entry, statsCollection *StatsCollection) {
+	if strings.Contains(entry.Description, "**") {
+		return
+	}
+	if entry.Today {
+		statsCollection.Daily.Work += entry.Duration
+	}
+	if entry.CurrentWeek {
+		statsCollection.Weekly.Work += entry.Duration
+	}
+	if entry.CurrentMonth {
+		statsCollection.Monthly.Work += entry.Duration
+	}
 }
 
 // FormatDuration formats a time.Duration into "__h __m" format.
