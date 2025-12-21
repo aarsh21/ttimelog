@@ -85,9 +85,8 @@ func (m *model) handleInput() {
 		return
 	}
 
-	arrivedMessage := val == "**arrived" || val == "arrived**"
 	var lastTaskTime time.Time
-	if len(m.entries) == 0 || (arrivedMessage && !m.handledArrivedMessage) {
+	if len(m.entries) == 0 || (timelog.IsArrivedMessage(val) && !m.handledArrivedMessage) {
 		lastTaskTime = time.Now()
 		m.handledArrivedMessage = true
 	} else {

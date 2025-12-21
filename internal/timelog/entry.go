@@ -166,7 +166,7 @@ func LoadEntries(filePath string) ([]Entry, StatsCollection, bool, error) {
 			return entries, statsCollection, handledArrivedMessage, err
 		}
 
-		if entry.Today && (entry.Description == "**arrived" || entry.Description == "arrived**") {
+		if entry.Today && IsArrivedMessage(entry.Description) {
 			handledArrivedMessage = true
 		}
 
@@ -203,6 +203,10 @@ func FormatDuration(diff time.Duration) string {
 	diff -= hours * time.Hour
 	mins := diff / time.Minute
 	return fmt.Sprintf("%d h %d min", hours, mins)
+}
+
+func IsArrivedMessage(val string) bool {
+	return val == "**arrived" || val == "arrived**"
 }
 
 func FormatStatDuration(diff time.Duration) string {
