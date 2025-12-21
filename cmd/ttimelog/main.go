@@ -17,14 +17,15 @@ import (
 )
 
 type model struct {
-	textInput       textinput.Model
-	taskTable       table.Model
-	err             error
-	width           int
-	height          int
-	entries         []timelog.Entry
-	statsCollection timelog.StatsCollection
-	scrollToBottom  bool
+	textInput             textinput.Model
+	taskTable             table.Model
+	err                   error
+	width                 int
+	height                int
+	entries               []timelog.Entry
+	statsCollection       timelog.StatsCollection
+	scrollToBottom        bool
+	handledArrivedMessage bool
 }
 
 const (
@@ -77,73 +78,60 @@ func (m model) Init() tea.Cmd {
 	)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	var cmds []tea.Cmd
-
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-
-		// -2 for border
-		availableWidth := msg.Width - 2
-		prefixSpace := lipgloss.Width("15:04 > ")
-		m.textInput.Width = availableWidth - prefixSpace - 2 // -2 for safety
-
-		// Update table dimensions
-		newCols := getTableCols(availableWidth)
-		m.taskTable.SetColumns(newCols)
-		fixedHeight := HeaderHeight + StatsHeight + FooterHeight + (DividerHeight * NumDividers) + BorderHeight
-		bodyHeight := msg.Height - fixedHeight
-		m.taskTable.SetHeight(bodyHeight)
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC:
-			return m, tea.Quit
-		case tea.KeyEnter:
-			val := m.textInput.Value()
-			if val != "" {
-				var lastTaskTime time.Time
-				if len(m.entries) == 0 {
-					lastTaskTime = time.Now()
-				} else {
-					lastTaskTime = m.entries[len(m.entries)-1].EndTime
-				}
-
-				// update table
-				newEntry := timelog.Entry{
-					EndTime:     time.Now(),
-					Description: val,
-					Duration:    time.Since(lastTaskTime),
-				}
-
-				m.entries = append(m.entries, newEntry)
-				if err := timelog.SaveEntry(newEntry); err != nil {
-					slog.Error("Failed to add entry with description", "error", newEntry.Description)
-				}
-
-				rows := getTableRows(m.entries)
-				m.taskTable.SetRows(rows)
-				m.scrollToBottom = true
-
-				timelog.UpdateStatsCollection(&newEntry, &m.statsCollection)
-
-				m.textInput.Reset()
-			}
-		case tea.KeyEsc:
-			if m.taskTable.Focused() {
-				m.taskTable.Blur()
-			} else {
-				m.taskTable.Focus()
-			}
-		}
-
-	case errMsg:
-		m.err = msg
-		return m, nil
+func (m *model) handleInput() {
+	val := m.textInput.Value()
+	if val == "" {
+		return
 	}
 
+	var lastTaskTime time.Time
+	if len(m.entries) == 0 {
+		lastTaskTime = time.Now()
+	} else {
+		lastTaskTime = m.entries[len(m.entries)-1].EndTime
+	}
+
+	// update table
+	newEntry := timelog.Entry{
+		EndTime:     time.Now(),
+		Description: val,
+		Duration:    time.Since(lastTaskTime),
+	}
+
+	m.entries = append(m.entries, newEntry)
+	if err := timelog.SaveEntry(newEntry); err != nil {
+		slog.Error("Failed to add entry with description", "error", newEntry.Description)
+	}
+
+	rows := getTableRows(m.entries)
+	m.taskTable.SetRows(rows)
+	m.scrollToBottom = true
+
+	timelog.UpdateStatsCollection(&newEntry, &m.statsCollection)
+
+	m.textInput.Reset()
+}
+
+func (m *model) handleWindowSize(msg tea.WindowSizeMsg) {
+	m.width = msg.Width
+	m.height = msg.Height
+
+	// -2 for border
+	availableWidth := msg.Width - 2
+	prefixSpace := lipgloss.Width("15:04 > ")
+	m.textInput.Width = availableWidth - prefixSpace - 2 // -2 for safety
+
+	// Update table dimensions
+	newCols := getTableCols(availableWidth)
+	m.taskTable.SetColumns(newCols)
+	fixedHeight := HeaderHeight + StatsHeight + FooterHeight + (DividerHeight * NumDividers) + BorderHeight
+	bodyHeight := max(msg.Height-fixedHeight, 1)
+	m.taskTable.SetHeight(bodyHeight)
+}
+
+func (m *model) updateComponents(msg tea.Msg) []tea.Cmd {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
 	m.textInput, cmd = m.textInput.Update(msg)
 	cmds = append(cmds, cmd)
 
@@ -158,7 +146,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.scrollToBottom = false
 	}
+	return cmds
+}
 
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.handleWindowSize(msg)
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEnter:
+			m.handleInput()
+		case tea.KeyEsc:
+			if m.taskTable.Focused() {
+				m.taskTable.Blur()
+			} else {
+				m.taskTable.Focus()
+			}
+		}
+
+	case errMsg:
+		m.err = msg
+		return m, nil
+	}
+
+	cmds := m.updateComponents(msg)
 	return m, tea.Batch(cmds...)
 }
 
