@@ -392,7 +392,6 @@ func fileWatcher(ctx context.Context, wg *sync.WaitGroup, program *tea.Program, 
 }
 
 func main() {
-	// TODO: save log file to ~/.ttimelog
 	userDir, err := os.UserHomeDir()
 	if err != nil {
 		slog.Error("Failed to get user home directory", "error", err.Error())
@@ -402,7 +401,7 @@ func main() {
 	logFilePath := filepath.Join(userDir, config.TimeLogDirname, "ttimelog.log")
 	logFile, err := os.OpenFile(
 		logFilePath,
-		os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+		os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
 		0o644,
 	)
 	if err != nil {
