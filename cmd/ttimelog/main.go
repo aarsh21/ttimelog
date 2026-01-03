@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Rash419/ttimelog/internal/config"
@@ -14,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/fsnotify/fsnotify"
 )
 
 type model struct {
@@ -26,6 +29,9 @@ type model struct {
 	statsCollection       timelog.StatsCollection
 	scrollToBottom        bool
 	handledArrivedMessage bool
+	ctx                   context.Context
+	cancel                context.CancelFunc
+	wg                    *sync.WaitGroup
 }
 
 const (
@@ -48,6 +54,17 @@ type (
 )
 
 func initialModel() model {
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		err := fileWatcher(ctx, wg)
+		if err != nil {
+			slog.Error("Failed to start filewatcher", "error", err)
+		}
+	}()
+
 	txtInput := textinput.New()
 	txtInput.Placeholder = "What are you working on?"
 	txtInput.Focus()
@@ -69,6 +86,9 @@ func initialModel() model {
 		statsCollection:       statsCollections,
 		scrollToBottom:        true,
 		handledArrivedMessage: handledArrivedMessage,
+		ctx:                   ctx,
+		cancel:                cancel,
+		wg:                    wg,
 	}
 }
 
@@ -148,6 +168,8 @@ func (m *model) updateComponents(msg tea.Msg) []tea.Cmd {
 	return cmds
 }
 
+type shutdownCompleteMsg struct{}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -155,7 +177,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			return m, tea.Quit
+			m.cancel()
+			return m, func() tea.Msg {
+				m.wg.Wait()
+				return shutdownCompleteMsg{}
+			}
 		case tea.KeyEnter:
 			m.handleInput()
 		case tea.KeyEsc:
@@ -165,6 +191,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.taskTable.Focus()
 			}
 		}
+
+	case shutdownCompleteMsg:
+		return m, tea.Quit
 
 	case errMsg:
 		m.err = msg
@@ -301,6 +330,48 @@ func (m model) View() string {
 		Render(innerView)
 }
 
+// watch modification in ".ttimelog.txt"
+func fileWatcher(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			slog.Error("Failed to close watcher", "error", err.Error())
+		}
+	}()
+
+	filename := "/home/rashesh/.ttimelog/ttimelog.txt"
+	err = watcher.Add(filename)
+	if err != nil {
+		return err
+	}
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return nil
+			}
+			fmt.Println("event:", event)
+			if event.Has(fsnotify.Write) {
+				fmt.Println("modified file:", event.Name)
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return nil
+			}
+			fmt.Println("error:", err)
+		case <-ctx.Done():
+			fmt.Println("exiting")
+			return nil
+		}
+	}
+}
+
 func main() {
 	slogger := config.GetSlogger()
 	slog.SetDefault(slogger)
@@ -312,9 +383,10 @@ func main() {
 	}
 	err = config.SetupTimeLogDirectory(userDir)
 	if err != nil {
-		slog.Error("Setup failed", "error", err.Error())
+		slog.Error("Setting up timelog file", "error", err.Error())
 		os.Exit(1)
 	}
+
 	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
