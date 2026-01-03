@@ -161,7 +161,7 @@ func (m *model) updateComponents(msg tea.Msg) []tea.Cmd {
 
 type shutdownCompleteMsg struct{}
 
-func (m model) handleFileChangedMsg() {
+func (m *model) handleFileChangedMsg() {
 	entries, statsCollections, handledArrivedMessage, err := timelog.LoadEntries(m.timeLogFilePath)
 	if err != nil {
 		slog.Error("Failed to load entries on reload", "error", err)
