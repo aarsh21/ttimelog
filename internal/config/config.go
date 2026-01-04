@@ -12,7 +12,7 @@ import (
 const (
 	TimeLogDirname  = ".ttimelog"
 	TimeLogFilename = "ttimelog.txt"
-	TimeLogFile = "ttimelog.log"
+	TimeLogFile     = "ttimelog.log"
 )
 
 func GetSlogger(logFile *os.File) *slog.Logger {
@@ -24,7 +24,7 @@ func GetSlogger(logFile *os.File) *slog.Logger {
 	return slog.New(handler)
 }
 
-func SetupTimeLogDirectory(userDir string) (string, error){
+func SetupTimeLogDirectory(userDir string) (string, error) {
 	fullDirPath := filepath.Join(userDir, TimeLogDirname)
 	err := os.MkdirAll(fullDirPath, 0755)
 	if err != nil {

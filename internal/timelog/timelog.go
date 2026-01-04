@@ -10,7 +10,6 @@ type TimeLog struct {
 	startTime time.Time
 }
 
-
 func GetTimeDiff(startTime time.Time, endTime time.Time) string {
 	diff := endTime.Sub(startTime)
 	return FormatDuration(diff)
