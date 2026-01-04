@@ -18,31 +18,33 @@ func TestTimeLog(t *testing.T) {
 }
 
 func TestEntryState(t *testing.T) {
-	today, currentWeek, currentMonth := GetEntryState(time.Now())
+	baseDate := time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC)
+
+	today, currentWeek, currentMonth := GetEntryState(baseDate, baseDate)
 	assert.Equal(t, true, today)
 	assert.Equal(t, true, currentWeek)
 	assert.Equal(t, true, currentMonth)
 
-	nextDay := time.Now().AddDate(0, 0, 1)
-	today, currentWeek, currentMonth = GetEntryState(nextDay)
+	nextDay := baseDate.AddDate(0, 0, 1)
+	today, currentWeek, currentMonth = GetEntryState(nextDay, baseDate)
 	assert.Equal(t, false, today)
 	assert.Equal(t, true, currentWeek)
 	assert.Equal(t, true, currentMonth)
 
-	nextWeek := time.Now().AddDate(0, 0, 7)
-	today, currentWeek, currentMonth = GetEntryState(nextWeek)
+	nextWeek := baseDate.AddDate(0, 0, 7)
+	today, currentWeek, currentMonth = GetEntryState(nextWeek, baseDate)
 	assert.Equal(t, false, today)
 	assert.Equal(t, false, currentWeek)
 	assert.Equal(t, true, currentMonth)
 
-	nextMonth := time.Now().AddDate(0, 1, 0)
-	today, currentWeek, currentMonth = GetEntryState(nextMonth)
+	nextMonth := baseDate.AddDate(0, 1, 0)
+	today, currentWeek, currentMonth = GetEntryState(nextMonth, baseDate)
 	assert.Equal(t, false, today)
 	assert.Equal(t, false, currentWeek)
 	assert.Equal(t, false, currentMonth)
 
-	nextYear := time.Now().AddDate(1, 0, 0)
-	today, currentWeek, currentMonth = GetEntryState(nextYear)
+	nextYear := baseDate.AddDate(1, 0, 0)
+	today, currentWeek, currentMonth = GetEntryState(nextYear, baseDate)
 	assert.Equal(t, false, today)
 	assert.Equal(t, false, currentWeek)
 	assert.Equal(t, false, currentMonth)

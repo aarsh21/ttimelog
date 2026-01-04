@@ -74,13 +74,17 @@ func SaveEntry(entry Entry, addNewLine bool, timeLogFilePath string) error {
 	return nil
 }
 
-func GetEntryState(t time.Time) (bool, bool, bool) {
-	now := time.Now()
+func GetEntryState(t time.Time, now ...time.Time) (bool, bool, bool) {
+	referenceTime := time.Now()
+	if len(now) > 0 {
+		referenceTime = now[0]
+	}
+	nowTime := referenceTime
 	y1, m1, d1 := t.Date()
-	y2, m2, d2 := now.Date()
+	y2, m2, d2 := nowTime.Date()
 
 	_, w1 := t.ISOWeek()
-	_, w2 := now.ISOWeek()
+	_, w2 := nowTime.ISOWeek()
 
 	var today, currentWeek, currentMonth bool
 	if y1 != y2 {
