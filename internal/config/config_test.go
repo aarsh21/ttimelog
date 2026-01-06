@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSetupTimeLogDirectory(t *testing.T) {
@@ -18,4 +20,26 @@ func TestSetupTimeLogDirectory(t *testing.T) {
 	if _, err := os.Stat(expectedFilePath); err != nil {
 		t.Errorf("Expected file to be created, but got error: %v", err)
 	}
+}
+
+func TestLoadConfig(t *testing.T) {
+	testConfig := `
+[gtimelog]
+task_list_url = https://chronophage/rest-api/proxy/tasks
+auth_header = Token ABCDXYZ
+`
+	tempDir := t.TempDir()
+	tempFile := filepath.Join(tempDir, "ttimelogrc")
+	err := os.WriteFile(tempFile, []byte(testConfig), 0o666)
+	if err != nil {
+		t.Fatalf("Failed to write temp file: %v", err)
+	}
+
+	appConfig, err := LoadConfig(tempFile)
+	if err != nil {
+		t.Errorf("Failed to LoadCofig with error: %v", err)
+	}
+
+	assert.Equal(t, "https://chronophage/rest-api/proxy/tasks", appConfig.Gtimelog.TaskListURL)
+	assert.Equal(t, "Token ABCDXYZ", appConfig.Gtimelog.AuthHeader)
 }

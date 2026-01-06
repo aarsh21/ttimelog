@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/ini.v1"
 )
 
 const (
@@ -26,7 +28,7 @@ func GetSlogger(logFile *os.File) *slog.Logger {
 
 func SetupTimeLogDirectory(userDir string) (string, error) {
 	fullDirPath := filepath.Join(userDir, TimeLogDirname)
-	err := os.MkdirAll(fullDirPath, 0755)
+	err := os.MkdirAll(fullDirPath, 0o755)
 	if err != nil {
 		return "", fmt.Errorf("failed to create directory[%s] with error[%v]", fullDirPath, err)
 	}
@@ -50,4 +52,24 @@ func SetupTimeLogDirectory(userDir string) (string, error) {
 	}
 
 	return timeLogFilePath, nil
+}
+
+type AppConfig struct {
+	Gtimelog struct {
+		AuthHeader  string `ini:"auth_header"`
+		TaskListURL string `ini:"task_list_url"`
+	} `ini:"gtimelog"`
+}
+
+func LoadConfig(path string) (*AppConfig, error) {
+	iniCfg, err := ini.Load(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg AppConfig
+	if err := iniCfg.MapTo(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
 }
