@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/Rash419/ttimelog/internal/config"
 	"github.com/Rash419/ttimelog/internal/timelog"
+	"github.com/Rash419/ttimelog/internal/treeview"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -24,6 +26,7 @@ import (
 type model struct {
 	textInput             textinput.Model
 	taskTable             table.Model
+	projectTree           *treeview.TreeView
 	err                   error
 	width                 int
 	height                int
@@ -132,7 +135,7 @@ func (m *model) handleWindowSize(msg tea.WindowSizeMsg) {
 	m.textInput.Width = availableWidth - prefixSpace - 2 // -2 for safety
 
 	// Update table dimensions
-	newCols := getTableCols(availableWidth)
+	newCols := getTableCols(int(math.Round(float64(availableWidth) / 1.3)))
 	m.taskTable.SetColumns(newCols)
 	fixedHeight := HeaderHeight + StatsHeight + FooterHeight + (DividerHeight * NumDividers) + BorderHeight
 	bodyHeight := max(msg.Height-fixedHeight, 1)
@@ -313,6 +316,29 @@ func createBodyContent(width, height int, entries []timelog.Entry) table.Model {
 	return taskTable
 }
 
+func createProjectSidebar() string {
+	return `
+ACI
+├── apps
+│   ├── frontend
+│   │   ├── deployment.yaml
+│   │   └── service.yaml
+│   └── backend
+│       ├── deployment.yaml
+│       ├── service.yaml
+│       └── configmap.yaml
+├── infra
+│   ├── ingress
+│   │   └── nginx.yaml
+│   └── monitoring
+│       ├── prometheus.yaml
+│       └── grafana.yaml
+└── policies
+    ├── network-policy.yaml
+    └── pod-security.yaml
+`
+}
+
 func (m model) View() string {
 	// make sure width is not negative
 	availableWidth := max(m.width-2, 1)
@@ -325,12 +351,21 @@ func (m model) View() string {
 		Foreground(lipgloss.Color("240")).
 		Render(strings.Repeat("─", availableWidth))
 
+	fixedHeight := HeaderHeight + StatsHeight + FooterHeight + (DividerHeight * NumDividers) + BorderHeight
+	bodyHeight := max(m.height-fixedHeight, 1)
+
+	verticalDivider := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).PaddingRight(1).
+		Render(strings.TrimRight(strings.Repeat("│\n", bodyHeight), "\n"))
+
+	body := lipgloss.JoinHorizontal(lipgloss.Top, m.taskTable.View(), verticalDivider, createProjectSidebar())
+
 	innerView := lipgloss.JoinVertical(lipgloss.Left,
 		headerContent,
 		divider,
 		statsContent,
 		divider,
-		m.taskTable.View(),
+		body,
 		divider,
 		footerContent,
 	)
