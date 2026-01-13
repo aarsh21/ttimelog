@@ -179,20 +179,31 @@ func (m *model) handleFileChangedMsg() {
 	m.scrollToBottom = true
 }
 
-func (m *model) handleKeyMsg(msg tea.KeyMsg) bool {
-	switch msg.Type {
-	case tea.KeyCtrlC:
-		return true
-	case tea.KeyEnter:
+type keyResult int
+
+const (
+	keyIgnored keyResult = iota
+	keyHandled
+	keyExit
+)
+
+func (m *model) handleKeyMsg(msg tea.KeyMsg) keyResult {
+	switch msg.String() {
+	case "ctrl+c":
+		return keyExit
+	case "enter":
 		m.handleInput()
-	case tea.KeyEsc:
-		if m.taskTable.Focused() {
-			m.taskTable.Blur()
-		} else {
-			m.taskTable.Focus()
-		}
+		return keyHandled
+	case "1":
+		m.textInput.Blur()
+		m.taskTable.Focus()
+		return keyHandled
+	case "2":
+		m.taskTable.Blur()
+		m.textInput.Focus()
+		return keyHandled
 	}
-	return false
+	return keyIgnored
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -204,8 +215,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fileErrorMsg:
 	// TODO: handle file watch error
 	case tea.KeyMsg:
-		exit := m.handleKeyMsg(msg)
-		if exit {
+		keyResult := m.handleKeyMsg(msg)
+		switch keyResult {
+		case keyHandled:
+			return m, nil
+		case keyExit:
 			m.cancel()
 			return m, func() tea.Msg {
 				m.wg.Wait()
