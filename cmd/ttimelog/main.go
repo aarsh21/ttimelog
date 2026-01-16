@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Rash419/ttimelog/internal/config"
+	"github.com/Rash419/ttimelog/internal/layout"
 	"github.com/Rash419/ttimelog/internal/timelog"
 	"github.com/Rash419/ttimelog/internal/treeview"
 	"github.com/charmbracelet/bubbles/progress"
@@ -41,7 +42,7 @@ type model struct {
 }
 
 const (
-	HeaderHeight  = 1
+	HeaderHeight  = 3
 	StatsHeight   = 2
 	FooterHeight  = 1
 	DividerHeight = 1
@@ -364,7 +365,13 @@ func (m model) View() string {
 	// make sure width is not negative
 	availableWidth := max(m.width-2, 1)
 
-	headerContent := createHeaderContent()
+	headerPane := layout.Pane{
+		Width:   max(m.width-4, 1),
+		Title:   "[1]",
+		View:    createHeaderContent,
+		Focused: true,
+	}
+
 	statsContent := createStatsContent(availableWidth, m)
 	footerContent := createFooterContent(m)
 
@@ -382,7 +389,7 @@ func (m model) View() string {
 	body := lipgloss.JoinHorizontal(lipgloss.Top, m.taskTable.View(), verticalDivider, createProjectSidebar())
 
 	innerView := lipgloss.JoinVertical(lipgloss.Left,
-		headerContent,
+		headerPane.Render(),
 		divider,
 		statsContent,
 		divider,
