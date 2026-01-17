@@ -39,15 +39,13 @@ type model struct {
 	cancel                context.CancelFunc
 	wg                    *sync.WaitGroup
 	timeLogFilePath       string
+	focus                 Focus
 }
 
 const (
-	HeaderHeight  = 3
-	StatsHeight   = 2
-	FooterHeight  = 1
-	DividerHeight = 1
-	NumDividers   = 3
-	BorderHeight  = 2 // Top + Bottom
+	HeaderHeight = 3
+	StatsHeight  = 5
+	FooterHeight = 2
 )
 
 // TODO: update dynamically using config
@@ -84,6 +82,7 @@ func initialModel(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitG
 		cancel:                cancel,
 		wg:                    wg,
 		timeLogFilePath:       timeLogFilePath,
+		focus:                 focusFooter,
 	}
 }
 
@@ -138,7 +137,7 @@ func (m *model) handleWindowSize(msg tea.WindowSizeMsg) {
 	// Update table dimensions
 	newCols := getTableCols(int(math.Round(float64(availableWidth) / 1.3)))
 	m.taskTable.SetColumns(newCols)
-	fixedHeight := HeaderHeight + StatsHeight + FooterHeight + (DividerHeight * NumDividers) + BorderHeight
+	fixedHeight := HeaderHeight + StatsHeight + FooterHeight + 2
 	bodyHeight := max(msg.Height-fixedHeight, 1)
 	m.taskTable.SetHeight(bodyHeight)
 }
@@ -188,6 +187,15 @@ const (
 	keyExit
 )
 
+type Focus int
+
+const (
+	focusHeader Focus = iota
+	focusStats
+	focusTable
+	focusFooter
+)
+
 func (m *model) handleKeyMsg(msg tea.KeyMsg) keyResult {
 	switch msg.String() {
 	case "ctrl+c":
@@ -196,10 +204,20 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) keyResult {
 		m.handleInput()
 		return keyHandled
 	case "1":
+		m.focus = focusHeader
+		m.textInput.Blur()
+		m.taskTable.Blur()
+	case "2":
+		m.focus = focusStats
+		m.textInput.Blur()
+		m.taskTable.Blur()
+	case "3":
+		m.focus = focusTable
 		m.textInput.Blur()
 		m.taskTable.Focus()
 		return keyHandled
-	case "2":
+	case "4":
+		m.focus = focusFooter
 		m.taskTable.Blur()
 		m.textInput.Focus()
 		return keyHandled
@@ -246,8 +264,8 @@ func createHeaderContent() string {
 	return fmt.Sprintf("%s (Week %d)", dateAndDay, week)
 }
 
-func createStatsContent(width int, m model) string {
-	colWidth := (width - 4) / 3
+func (m model) createStatsContent() string {
+	colWidth := max((m.width-4)/3, 1)
 	progressBarWidth := colWidth - 14
 
 	colStyle := lipgloss.NewStyle().Width(colWidth).Align(lipgloss.Left)
@@ -274,7 +292,7 @@ func createStatsContent(width int, m model) string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, dailyStat, divider, weeklyStat, divider, monthlyStat)
 }
 
-func createFooterContent(m model) string {
+func (m model) createFooterContent() string {
 	return fmt.Sprintf("%v %s", time.Now().Format("15:04"), m.textInput.View())
 }
 
@@ -338,69 +356,50 @@ func createBodyContent(width, height int, entries []timelog.Entry) table.Model {
 	return taskTable
 }
 
-func createProjectSidebar() string {
-	return `
-ACI
-├── apps
-│   ├── frontend
-│   │   ├── deployment.yaml
-│   │   └── service.yaml
-│   └── backend
-│       ├── deployment.yaml
-│       ├── service.yaml
-│       └── configmap.yaml
-├── infra
-│   ├── ingress
-│   │   └── nginx.yaml
-│   └── monitoring
-│       ├── prometheus.yaml
-│       └── grafana.yaml
-└── policies
-    ├── network-policy.yaml
-    └── pod-security.yaml
-`
-}
-
 func (m model) View() string {
 	// make sure width is not negative
 	availableWidth := max(m.width-2, 1)
 
 	headerPane := layout.Pane{
-		Width:   max(m.width-4, 1),
+		Width:   availableWidth,
 		Title:   "[1]",
 		View:    createHeaderContent,
-		Focused: true,
+		Focused: m.focus == focusHeader,
 	}
 
-	statsContent := createStatsContent(availableWidth, m)
-	footerContent := createFooterContent(m)
+	statsPane := layout.Pane{
+		Width:   availableWidth,
+		Title:   "[2]",
+		View:    m.createStatsContent,
+		Focused: m.focus == focusStats,
+	}
 
-	divider := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
-		Render(strings.Repeat("─", availableWidth))
-
-	fixedHeight := HeaderHeight + StatsHeight + FooterHeight + (DividerHeight * NumDividers) + BorderHeight
+	fixedHeight := HeaderHeight + StatsHeight + FooterHeight + 2
 	bodyHeight := max(m.height-fixedHeight, 1)
 
-	verticalDivider := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).PaddingRight(1).
-		Render(strings.TrimRight(strings.Repeat("│\n", bodyHeight), "\n"))
+	bodyPane := layout.Pane{
+		Width:   availableWidth,
+		Title:   "[3]",
+		View:    m.taskTable.View,
+		Height:  bodyHeight,
+		Focused: m.focus == focusTable,
+	}
 
-	body := lipgloss.JoinHorizontal(lipgloss.Top, m.taskTable.View(), verticalDivider, createProjectSidebar())
+	footerPane := layout.Pane{
+		Width:   availableWidth,
+		Title:   "[4]",
+		View:    m.createFooterContent,
+		Focused: m.focus == focusFooter,
+	}
 
 	innerView := lipgloss.JoinVertical(lipgloss.Left,
 		headerPane.Render(),
-		divider,
-		statsContent,
-		divider,
-		body,
-		divider,
-		footerContent,
+		statsPane.Render(),
+		bodyPane.Render(),
+		footerPane.Render(),
 	)
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Render(innerView)
+	return innerView
 }
 
 type fileChangedMsg struct{}
