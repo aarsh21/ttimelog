@@ -15,7 +15,6 @@ import (
 	"github.com/Rash419/ttimelog/internal/config"
 	"github.com/Rash419/ttimelog/internal/layout"
 	"github.com/Rash419/ttimelog/internal/timelog"
-	"github.com/Rash419/ttimelog/internal/treeview"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -27,7 +26,6 @@ import (
 type model struct {
 	textInput             textinput.Model
 	taskTable             table.Model
-	projectTree           *treeview.TreeView
 	err                   error
 	width                 int
 	height                int
