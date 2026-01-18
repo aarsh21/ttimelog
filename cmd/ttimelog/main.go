@@ -224,6 +224,27 @@ const (
 	focusFooter
 )
 
+func (m *model) handleProjectTreeKeyMsg(msg tea.KeyMsg) keyResult {
+	switch msg.String() {
+	case "ctrl+c":
+		return keyExit
+	case "j":
+		m.projectTree.MoveDown()
+		return keyHandled
+	case "k":
+		m.projectTree.MoveUp()
+		return keyHandled
+	case " ": //space
+		m.projectTree.Toggle()
+		return keyHandled
+	case "esc":
+		m.showProjectOverlay = false
+		m.focus = focusFooter
+		return keyHandled
+	}
+	return keyHandled
+}
+
 func (m *model) handleKeyMsg(msg tea.KeyMsg) keyResult {
 	switch msg.String() {
 	case "ctrl+c":
@@ -232,14 +253,7 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) keyResult {
 		m.handleInput()
 		return keyHandled
 	case "ctrl+p":
-		if m.showProjectOverlay {
-			m.showProjectOverlay = false
-		} else {
-			m.showProjectOverlay = true
-		}
-		return keyHandled
-	case "esc":
-		m.showProjectOverlay = false
+		m.showProjectOverlay = true
 		return keyHandled
 	case "1":
 		m.focus = focusHeader
@@ -274,7 +288,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fileErrorMsg:
 	// TODO: handle file watch error
 	case tea.KeyMsg:
-		keyResult := m.handleKeyMsg(msg)
+		var keyResult keyResult
+		if m.showProjectOverlay {
+			keyResult = m.handleProjectTreeKeyMsg(msg)
+		} else {
+			keyResult = m.handleKeyMsg(msg)
+		}
 		switch keyResult {
 		case keyHandled:
 			return m, nil
