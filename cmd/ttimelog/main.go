@@ -229,15 +229,17 @@ func (m *model) handleProjectTreeKeyMsg(msg tea.KeyMsg) keyResult {
 	switch msg.String() {
 	case "ctrl+c":
 		return keyExit
-	case "j":
+	case "j", "down":
 		m.projectTree.MoveDown()
 		return keyHandled
-	case "k":
+	case "k", "up":
 		m.projectTree.MoveUp()
 		return keyHandled
 	case " ": // space
 		m.projectTree.Toggle()
 		return keyHandled
+	case "enter":
+		// insert project to task description
 	case "esc":
 		m.showProjectOverlay = false
 		m.focus = focusFooter
