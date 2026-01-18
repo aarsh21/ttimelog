@@ -222,6 +222,7 @@ const (
 	focusStats
 	focusTable
 	focusFooter
+	focusProjectTree
 )
 
 func (m *model) handleProjectTreeKeyMsg(msg tea.KeyMsg) keyResult {
@@ -234,7 +235,7 @@ func (m *model) handleProjectTreeKeyMsg(msg tea.KeyMsg) keyResult {
 	case "k":
 		m.projectTree.MoveUp()
 		return keyHandled
-	case " ": //space
+	case " ": // space
 		m.projectTree.Toggle()
 		return keyHandled
 	case "esc":
@@ -254,6 +255,7 @@ func (m *model) handleKeyMsg(msg tea.KeyMsg) keyResult {
 		return keyHandled
 	case "ctrl+p":
 		m.showProjectOverlay = true
+		m.focus = focusProjectTree
 		return keyHandled
 	case "1":
 		m.focus = focusHeader
@@ -415,18 +417,6 @@ func createBodyContent(width, height int, entries []timelog.Entry) table.Model {
 	return taskTable
 }
 
-func (m model) createProjectTree() string {
-	overlayStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("63")).
-		Padding(1, 2).
-		Width(40).
-		Height(15).
-		Background(lipgloss.Color("235"))
-
-	return overlayStyle.Render(m.projectTree.View())
-}
-
 func (m model) View() string {
 	// make sure width is not negative
 	availableWidth := max(m.width-2, 1)
@@ -474,7 +464,15 @@ func (m model) View() string {
 		return mainView
 	}
 
-	return overlay.Composite(m.createProjectTree(), mainView, overlay.Center, overlay.Center, 0, 0)
+	projectPane := layout.Pane{
+		Title:   "Projects",
+		Width:   40,
+		Height:  15,
+		View:    m.projectTree.View,
+		Focused: true,
+	}
+
+	return overlay.Composite(projectPane.Render(), mainView, overlay.Center, overlay.Center, 0, 0)
 }
 
 type fileChangedMsg struct{}
