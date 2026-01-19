@@ -35,7 +35,7 @@ auth_header = Token ABCDXYZ
 		t.Fatalf("Failed to write temp file: %v", err)
 	}
 
-	appConfig, err := LoadConfig(tempFile)
+	appConfig, err := LoadConfig(tempDir)
 	if err != nil {
 		t.Errorf("Failed to LoadCofig with error: %v", err)
 	}

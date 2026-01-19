@@ -15,6 +15,8 @@ const (
 	TimeLogDirname  = ".ttimelog"
 	TimeLogFilename = "ttimelog.txt"
 	TimeLogFile     = "ttimelog.log"
+	TimeConfigFile  = "ttimelogrc"
+	ProjectListFile = "project-list.txt"
 )
 
 func GetSlogger(logFile *os.File) *slog.Logger {
@@ -59,10 +61,12 @@ type AppConfig struct {
 		AuthHeader  string `ini:"auth_header"`
 		TaskListURL string `ini:"task_list_url"`
 	} `ini:"gtimelog"`
+	TimeLogDirPath string
 }
 
-func LoadConfig(path string) (*AppConfig, error) {
-	iniCfg, err := ini.Load(path)
+func LoadConfig(timeLogDir string) (*AppConfig, error) {
+	configPath := filepath.Join(timeLogDir, TimeConfigFile)
+	iniCfg, err := ini.Load(configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -71,5 +75,6 @@ func LoadConfig(path string) (*AppConfig, error) {
 	if err := iniCfg.MapTo(&cfg); err != nil {
 		return nil, err
 	}
+	cfg.TimeLogDirPath = timeLogDir
 	return &cfg, nil
 }

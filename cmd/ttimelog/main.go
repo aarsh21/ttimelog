@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Rash419/ttimelog/internal/chrono"
 	"github.com/Rash419/ttimelog/internal/config"
 	"github.com/Rash419/ttimelog/internal/layout"
 	"github.com/Rash419/ttimelog/internal/timelog"
@@ -558,6 +559,18 @@ func main() {
 	if err != nil {
 		slog.Error("Setting up timelog file", "error", err.Error())
 		os.Exit(1)
+	}
+
+	timeLogDirPath := filepath.Join(userDir, config.TimeLogDirname)
+	appConfig, err := config.LoadConfig(timeLogDirPath)
+	if err != nil {
+		slog.Error("Failed to parse config file", "error", err.Error())
+		os.Exit(1)
+	}
+
+	err = chrono.FetchProjectList(appConfig)
+	if err != nil {
+		slog.Error("Faield to fetch project list", "error", err.Error())
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
