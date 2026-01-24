@@ -29,12 +29,12 @@ func ParseProjectList(filePath string) (*treeview.TreeNode, error) {
 	scanner := bufio.NewScanner(file)
 
 	hiddenRoot := treeview.TreeNode{
-		Label: "hidden-root",
+		Label: "Projects",
 	}
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		ignoreLine := line == "" || strings.HasPrefix(line, "#")
+		ignoreLine := line == "" || strings.HasPrefix(line, "#") || strings.Contains(line, "*")
 		if ignoreLine {
 			continue
 		}
@@ -44,7 +44,7 @@ func ParseProjectList(filePath string) (*treeview.TreeNode, error) {
 			continue
 		}
 
-		treeview.AppendPath(&hiddenRoot,  tokens)
+		treeview.AppendPath(&hiddenRoot, tokens)
 	}
 	return &hiddenRoot, nil
 }
