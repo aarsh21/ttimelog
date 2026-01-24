@@ -61,11 +61,12 @@ type (
 	errMsg error
 )
 
-func initialModel(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, timeLogFilePath string) model {
+func initialModel(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, appConfig *config.AppConfig) model {
 	txtInput := textinput.New()
 	txtInput.Placeholder = "What are you working on?"
 	txtInput.Focus()
 
+	timeLogFilePath := filepath.Join(appConfig.TimeLogDirPath,  config.TimeLogFilename)
 	entries, statsCollections, handledArrivedMessage, err := timelog.LoadEntries(timeLogFilePath)
 	if err != nil {
 		slog.Error("Failed to load entries", "error", err)
@@ -73,30 +74,12 @@ func initialModel(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitG
 
 	taskTable := createBodyContent(0, 0, entries)
 
-	nodeA := treeview.TreeNode{
-		Label:    "A",
-		Expanded: true,
+	projectListFile := filepath.Join(appConfig.TimeLogDirPath, config.ProjectListFile)
+	rootNode, err := chrono.ParseProjectList(projectListFile)
+	if err != nil {
+		slog.Error("Failed to parse project list", "error", err.Error())
 	}
-
-	nodeB := treeview.TreeNode{
-		Label:    "B",
-		Expanded: true,
-	}
-
-	nodeC := treeview.TreeNode{
-		Label:    "C",
-		Expanded: true,
-	}
-
-	nodeD := treeview.TreeNode{
-		Label:    "D",
-		Expanded: true,
-	}
-
-	nodeC.Children = append(nodeC.Children, &nodeD)
-	nodeA.Children = append(nodeA.Children, &nodeB, &nodeC)
-
-	projectTree := treeview.NewTreeView(&nodeA)
+	projectTree := treeview.NewTreeView(rootNode)
 
 	return model{
 		textInput:             txtInput,
@@ -576,7 +559,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 
-	p := tea.NewProgram(initialModel(ctx, cancel, wg, timeLogFilePath), tea.WithAltScreen())
+	p := tea.NewProgram(initialModel(ctx, cancel, wg, appConfig), tea.WithAltScreen())
 
 	wg.Add(1)
 	go func() {

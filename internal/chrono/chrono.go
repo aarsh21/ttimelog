@@ -1,16 +1,53 @@
 package chrono
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Rash419/ttimelog/internal/config"
+	"github.com/Rash419/ttimelog/internal/treeview"
 )
+
+func ParseProjectList(filePath string) (*treeview.TreeNode, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			slog.Error("Failed to close file", "error", err)
+		}
+	}()
+
+	scanner := bufio.NewScanner(file)
+
+	hiddenRoot := treeview.TreeNode{
+		Label: "hidden-root",
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		ignoreLine := line == "" || strings.HasPrefix(line, "#")
+		if ignoreLine {
+			continue
+		}
+
+		tokens := strings.Split(line, ":")
+		if len(tokens) != 4 {
+			continue
+		}
+
+		treeview.AppendPath(&hiddenRoot,  tokens)
+	}
+	return &hiddenRoot, nil
+}
 
 func FetchProjectList(appConfig *config.AppConfig) error {
 	client := &http.Client{
