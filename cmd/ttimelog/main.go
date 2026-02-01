@@ -166,9 +166,6 @@ func (m *model) updateComponents(msg tea.Msg) []tea.Cmd {
 	m.taskTable, cmd = m.taskTable.Update(msg)
 	cmds = append(cmds, cmd)
 
-	m.projectTree.Viewport, cmd = m.projectTree.Viewport.Update(msg)
-	cmds = append(cmds, cmd)
-
 	// Scroll to bottom after table has processed the message
 	if m.scrollToBottom {
 		rowCount := len(m.taskTable.Rows())
@@ -221,13 +218,13 @@ func (m *model) handleProjectTreeKeyMsg(msg tea.KeyMsg) keyResult {
 		return keyExit
 	case "j", "down":
 		m.projectTree.MoveDown()
-		return keyIgnored
+		return keyHandled
 	case "k", "up":
 		m.projectTree.MoveUp()
-		return keyIgnored
+		return keyHandled
 	case " ": // space
 		m.projectTree.Toggle()
-		return keyIgnored
+		return keyHandled
 	case "enter":
 		// insert project to task description
 	case "esc":
