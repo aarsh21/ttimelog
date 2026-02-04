@@ -40,7 +40,7 @@ func ParseProjectList(filePath string) (*treeview.TreeNode, error) {
 			continue
 		}
 
-		tokens := strings.Split(line, ": ")
+		tokens := strings.Split(line, ":")
 		if len(tokens) != 4 {
 			continue
 		}
