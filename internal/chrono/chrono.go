@@ -40,12 +40,12 @@ func ParseProjectList(filePath string) (*treeview.TreeNode, error) {
 			continue
 		}
 
-		tokens := strings.Split(line, ":")
+		tokens := strings.Split(line, ": ")
 		if len(tokens) != 4 {
 			continue
 		}
 
-		treeview.AppendPath(&hiddenRoot, tokens)
+		treeview.AppendPath(&hiddenRoot, tokens, 0)
 	}
 	return &hiddenRoot, nil
 }
@@ -71,7 +71,6 @@ func FetchProjectList(appConfig *config.AppConfig) error {
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	slog.Debug("Response", "status", resp.Status, "body", string(body))
 
 	projectListPath := filepath.Join(appConfig.TimeLogDirPath, config.ProjectListFile)
 	projectListFile, err := os.Create(projectListPath)

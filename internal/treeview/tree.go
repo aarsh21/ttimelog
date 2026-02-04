@@ -1,9 +1,12 @@
 package treeview
 
+import "strings"
+
 type TreeNode struct {
 	Label    string
 	Children []*TreeNode
 	Expanded bool
+	Path     string
 }
 
 type Row struct {
@@ -30,23 +33,24 @@ func Traverse(node *TreeNode, depth int, rows *[]Row) {
 	}
 }
 
-func AppendPath(rootNode *TreeNode, path []string) {
+func AppendPath(rootNode *TreeNode, path []string, index int) {
 	// Base case: no more labels to consume
-	if len(path) == 0 {
+	if len(path) == index {
 		return
 	}
 
-	currentLabel := path[0]
+	currentLabel := path[index]
 
 	for _, child := range rootNode.Children {
 		if child.Label == currentLabel {
-			AppendPath(child, path[1:])
+			AppendPath(child, path, index+1)
 			return
 		}
 	}
 
-	newChild := &TreeNode{Label: currentLabel}
+	// TODO: improve this to only save "Path" for leaf nodes
+	newChild := &TreeNode{Label: currentLabel, Path: strings.Join(path, ":")}
 	rootNode.Children = append(rootNode.Children, newChild)
 
-	AppendPath(newChild, path[1:])
+	AppendPath(newChild, path, index+1)
 }

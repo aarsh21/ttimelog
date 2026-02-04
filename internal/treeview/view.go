@@ -1,6 +1,7 @@
 package treeview
 
 import (
+	"log/slog"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -102,4 +103,12 @@ func (t *TreeView) View() string {
 func (t *TreeView) SetSize(width, height int) {
 	t.Viewport.Width = width
 	t.Viewport.Height = height
+}
+
+func (t *TreeView) GetProjectPath() {
+	node := t.Rows[t.Cursor].TreeNode
+	if node.Children != nil {
+		return
+	}
+	slog.Debug("debuginfo", "GetProjectPath", node.Path)
 }

@@ -226,6 +226,8 @@ func (m *model) handleProjectTreeKeyMsg(msg tea.KeyMsg) keyResult {
 		m.projectTree.Toggle()
 		return keyHandled
 	case "enter":
+
+		m.projectTree.GetProjectPath()
 		// insert project to task description
 	case "esc":
 		m.showProjectOverlay = false
