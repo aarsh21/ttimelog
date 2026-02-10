@@ -18,6 +18,28 @@ ttimelog is a Go-based terminal rewrite aiming to provide the same functionality
 
 ## Installation
 
+### Quick install (Linux / macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aarsh21/ttimelog/main/install.sh | sh
+```
+
+Install a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aarsh21/ttimelog/main/install.sh | TTIMELOG_VERSION=v0.1.0 sh
+```
+
+Install to a custom directory:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aarsh21/ttimelog/main/install.sh | TTIMELOG_INSTALL_DIR=~/bin sh
+```
+
+### From source
+
+Requires [Go](https://go.dev/dl/) 1.25+:
+
 ```bash
 go install github.com/Rash419/ttimelog/cmd/ttimelog@latest
 ```
@@ -30,6 +52,7 @@ go install github.com/Rash419/ttimelog/cmd/ttimelog@latest
 |-----|--------|
 | `Enter` | Submit task |
 | `Esc` | Toggle focus |
+| `Ctrl+P` | Open project list (Chronophage) |
 | `Ctrl+C` | Quit |
 
 ### Task Markers
@@ -37,10 +60,14 @@ go install github.com/Rash419/ttimelog/cmd/ttimelog@latest
 - `**arrived`: Mark work start time
 - `**task description`: Mark as slack/break time
 
-## Data Location
+## Configuration
 
-- `~/.ttimelog/ttimelog.txt`: Timelog entries
-- `~/.ttimelog/ttimelog.log`: Application logs
+| File | Purpose |
+|------|---------|
+| `~/.ttimelog/ttimelogrc` | App configuration (INI format) |
+| `~/.ttimelog/ttimelog.txt` | Timelog entries |
+| `~/.ttimelog/ttimelog.log` | Application logs |
+| `~/.ttimelog/project-list.txt` | Chronophage project list (auto-fetched) |
 
 ## Todo
 
